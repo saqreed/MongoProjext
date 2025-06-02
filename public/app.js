@@ -2,6 +2,11 @@
 let currentUser = null;
 let authToken = null;
 
+// Переменные для отслеживания редактируемых элементов
+let currentEditingEmployeeId = null;
+let currentEditingProjectId = null;
+let currentEditingDepartmentId = null;
+
 // Утилиты
 const API_BASE = '/api';
 
@@ -287,8 +292,10 @@ async function searchEmployees() {
     }
 }
 
-function showAddEmployeeModal() {
-    loadDepartmentsForFilter();
+async function showAddEmployeeModal() {
+    // Загрузка отделов для селекта
+    await loadDepartmentsForModal('addEmployeeForm');
+    
     const modal = new bootstrap.Modal(document.getElementById('addEmployeeModal'));
     modal.show();
 }
@@ -341,19 +348,22 @@ async function loadProjects() {
                         <span class="badge bg-light text-dark">${project.status}</span>
                     </div>
                     <div class="card-body">
-                        <p class="card-text">${project.description}</p>
+                        <p class="card-text">${project.description || 'Описание не указано'}</p>
                         <div class="mb-2">
-                            <strong>Бюджет:</strong> ${project.budget.toLocaleString()} ₽
+                            <strong>Бюджет:</strong> ${(project.budget || 0).toLocaleString()} ₽
                         </div>
                         <div class="mb-2">
-                            <strong>Отдел:</strong> ${project.department}
+                            <strong>Отдел:</strong> ${project.department || 'Не указан'}
                         </div>
                         <div class="mb-2">
-                            <strong>Команда:</strong> ${project.team.join(', ')}
+                            <strong>Менеджер:</strong> ${project.manager || 'Не назначен'}
+                        </div>
+                        <div class="mb-2">
+                            <strong>Команда:</strong> ${project.team && Array.isArray(project.team) ? project.team.join(', ') : 'Не указана'}
                         </div>
                         <div class="text-muted small">
-                            ${new Date(project.startDate).toLocaleDateString()} - 
-                            ${new Date(project.endDate).toLocaleDateString()}
+                            ${project.startDate ? new Date(project.startDate).toLocaleDateString() : 'Не указано'} - 
+                            ${project.endDate ? new Date(project.endDate).toLocaleDateString() : 'Не определено'}
                         </div>
                     </div>
                     <div class="card-footer">
@@ -508,14 +518,26 @@ function getStatusColor(status) {
     }
 }
 
-function showAlert(elementId, message, type) {
-    const alertElement = document.getElementById(elementId);
-    alertElement.textContent = message;
-    alertElement.className = `alert alert-${type}`;
-    alertElement.classList.remove('hidden');
+function showAlert(containerId, message, type = 'danger') {
+    const container = document.getElementById(containerId);
+    if (!container) return;
     
+    container.innerHTML = `
+        <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    `;
+    
+    // Автоматическое скрытие через 5 секунд
     setTimeout(() => {
-        alertElement.classList.add('hidden');
+        const alert = container.querySelector('.alert');
+        if (alert) {
+            alert.classList.remove('show');
+            setTimeout(() => {
+                container.innerHTML = '';
+            }, 150);
+        }
     }, 5000);
 }
 
@@ -585,9 +607,68 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('password').value = 'admin123';
 });
 
-// Заглушки для функций редактирования и удаления
-function editEmployee(id) {
-    showToast('Функция редактирования в разработке', 'info');
+// ФУНКЦИИ РЕДАКТИРОВАНИЯ СОТРУДНИКОВ
+async function editEmployee(id) {
+    try {
+        // Получение данных сотрудника
+        const employees = await apiRequest('/employees');
+        const employee = employees.find(emp => emp._id === id);
+        
+        if (!employee) {
+            showAlert('employeesAlert', 'Сотрудник не найден', 'danger');
+            return;
+        }
+        
+        currentEditingEmployeeId = id;
+        
+        // Загрузка отделов для селекта
+        await loadDepartmentsForEditModal('editEmployeeDepartment');
+        
+        // Заполнение формы редактирования
+        document.getElementById('editEmployeeName').value = employee.name;
+        document.getElementById('editEmployeePosition').value = employee.position;
+        document.getElementById('editEmployeeDepartment').value = employee.department;
+        document.getElementById('editEmployeeSalary').value = employee.salary;
+        document.getElementById('editEmployeeEmail').value = employee.email;
+        document.getElementById('editEmployeePhone').value = employee.phone || '';
+        document.getElementById('editEmployeeSkills').value = employee.skills ? employee.skills.join(', ') : '';
+        
+        // Показ модального окна редактирования
+        const editModal = new bootstrap.Modal(document.getElementById('editEmployeeModal'));
+        editModal.show();
+        
+    } catch (error) {
+        showAlert('employeesAlert', error.message, 'danger');
+    }
+}
+
+async function updateEmployee() {
+    const form = document.getElementById('editEmployeeForm');
+    const formData = new FormData(form);
+    
+    const updatedEmployee = {
+        name: formData.get('name'),
+        position: formData.get('position'),
+        department: formData.get('department'),
+        salary: parseInt(formData.get('salary')),
+        email: formData.get('email'),
+        phone: formData.get('phone'),
+        skills: formData.get('skills') ? formData.get('skills').split(',').map(s => s.trim()) : []
+    };
+    
+    try {
+        await apiRequest(`/employees/${currentEditingEmployeeId}`, {
+            method: 'PUT',
+            body: updatedEmployee
+        });
+        
+        bootstrap.Modal.getInstance(document.getElementById('editEmployeeModal')).hide();
+        loadEmployees();
+        showToast('Сотрудник успешно обновлен!', 'success');
+        currentEditingEmployeeId = null;
+    } catch (error) {
+        showAlert('editEmployeeModalAlert', error.message, 'danger');
+    }
 }
 
 function deleteEmployee(id) {
@@ -597,12 +678,121 @@ function deleteEmployee(id) {
                 showToast('Сотрудник удален', 'success');
                 loadEmployees();
             })
-            .catch(error => showToast(error.message, 'danger'));
+            .catch(error => {
+                if (error.message.includes('участвует в')) {
+                    showAlert('employeesAlert', error.message, 'warning');
+                } else {
+                    showToast(error.message, 'danger');
+                }
+            });
     }
 }
 
-function editProject(id) {
-    showToast('Функция редактирования в разработке', 'info');
+// ФУНКЦИИ РЕДАКТИРОВАНИЯ ПРОЕКТОВ
+async function editProject(id) {
+    try {
+        // Получение данных проекта
+        const projects = await apiRequest('/projects');
+        const project = projects.find(proj => proj._id === id);
+        
+        if (!project) {
+            showAlert('projectsAlert', 'Проект не найден', 'danger');
+            return;
+        }
+        
+        currentEditingProjectId = id;
+        
+        // Загрузка отделов для селекта
+        await loadDepartmentsForEditModal('editProjectDepartment');
+        
+        // Заполнение формы редактирования
+        document.getElementById('editProjectName').value = project.name;
+        document.getElementById('editProjectDescription').value = project.description;
+        document.getElementById('editProjectStatus').value = project.status;
+        document.getElementById('editProjectBudget').value = project.budget;
+        document.getElementById('editProjectDepartment').value = project.department;
+        document.getElementById('editProjectManager').value = project.manager || '';
+        document.getElementById('editProjectTeam').value = project.team && Array.isArray(project.team) ? project.team.join(', ') : '';
+        
+        // Обработка дат
+        if (project.startDate) {
+            document.getElementById('editProjectStartDate').value = 
+                new Date(project.startDate).toISOString().split('T')[0];
+        }
+        if (project.endDate) {
+            document.getElementById('editProjectEndDate').value = 
+                new Date(project.endDate).toISOString().split('T')[0];
+        }
+        
+        // Показ модального окна редактирования
+        const editModal = new bootstrap.Modal(document.getElementById('editProjectModal'));
+        editModal.show();
+        
+    } catch (error) {
+        showAlert('projectsAlert', error.message, 'danger');
+    }
+}
+
+async function updateProject() {
+    const form = document.getElementById('editProjectForm');
+    const formData = new FormData(form);
+    
+    const updatedProject = {
+        name: formData.get('name'),
+        description: formData.get('description'),
+        status: formData.get('status'),
+        budget: parseInt(formData.get('budget')),
+        department: formData.get('department'),
+        manager: formData.get('manager'),
+        team: formData.get('team') ? formData.get('team').split(',').map(s => s.trim()).filter(s => s) : [],
+        startDate: new Date(formData.get('startDate')),
+        endDate: formData.get('endDate') ? new Date(formData.get('endDate')) : null
+    };
+    
+    try {
+        await apiRequest(`/projects/${currentEditingProjectId}`, {
+            method: 'PUT',
+            body: updatedProject
+        });
+        
+        bootstrap.Modal.getInstance(document.getElementById('editProjectModal')).hide();
+        loadProjects();
+        showToast('Проект успешно обновлен!', 'success');
+        currentEditingProjectId = null;
+    } catch (error) {
+        showAlert('editProjectModalAlert', error.message, 'danger');
+    }
+}
+
+async function addProject() {
+    const form = document.getElementById('addProjectForm');
+    const formData = new FormData(form);
+    
+    const project = {
+        name: formData.get('name'),
+        description: formData.get('description'),
+        status: formData.get('status'),
+        budget: parseInt(formData.get('budget')),
+        department: formData.get('department'),
+        manager: formData.get('manager'),
+        team: formData.get('team') ? formData.get('team').split(',').map(s => s.trim()).filter(s => s) : [],
+        startDate: new Date(formData.get('startDate')),
+        endDate: formData.get('endDate') ? new Date(formData.get('endDate')) : null
+    };
+    
+    try {
+        await apiRequest('/projects', {
+            method: 'POST',
+            body: project
+        });
+        
+        bootstrap.Modal.getInstance(document.getElementById('addProjectModal')).hide();
+        form.reset();
+        loadProjects();
+        showToast('Проект успешно добавлен!', 'success');
+    } catch (error) {
+        showAlert('projectModalAlert', error.message, 'danger');
+    }
 }
 
 function deleteProject(id) {
@@ -612,29 +802,158 @@ function deleteProject(id) {
                 showToast('Проект удален', 'success');
                 loadProjects();
             })
-            .catch(error => showToast(error.message, 'danger'));
+            .catch(error => {
+                if (error.message.includes('статусом') || error.message.includes('Завершите')) {
+                    showAlert('projectsAlert', error.message, 'warning');
+                } else {
+                    showToast(error.message, 'danger');
+                }
+            });
     }
 }
 
-function editDepartment(id) {
-    showToast('Функция редактирования в разработке', 'info');
-}
-
-function deleteDepartment(id) {
-    if (confirm('Вы уверены, что хотите удалить этот отдел?')) {
-        apiRequest(`/departments/${id}`, { method: 'DELETE' })
-            .then(() => {
-                showToast('Отдел удален', 'success');
-                loadDepartments();
-            })
-            .catch(error => showToast(error.message, 'danger'));
+// ФУНКЦИИ РЕДАКТИРОВАНИЯ ОТДЕЛОВ
+async function editDepartment(id) {
+    try {
+        // Получение данных отдела
+        const departments = await apiRequest('/departments');
+        const department = departments.find(dept => dept._id === id);
+        
+        if (!department) {
+            showAlert('departmentsAlert', 'Отдел не найден', 'danger');
+            return;
+        }
+        
+        currentEditingDepartmentId = id;
+        
+        // Заполнение формы редактирования
+        document.getElementById('editDepartmentName').value = department.name;
+        document.getElementById('editDepartmentLocation').value = department.location;
+        document.getElementById('editDepartmentManager').value = department.manager || '';
+        document.getElementById('editDepartmentBudget').value = department.budget || '';
+        
+        // Показ модального окна редактирования
+        const editModal = new bootstrap.Modal(document.getElementById('editDepartmentModal'));
+        editModal.show();
+        
+    } catch (error) {
+        showAlert('departmentsAlert', error.message, 'danger');
     }
 }
 
-function showAddProjectModal() {
-    showToast('Модальное окно добавления проекта в разработке', 'info');
+async function updateDepartment() {
+    const form = document.getElementById('editDepartmentForm');
+    const formData = new FormData(form);
+    
+    const updatedDepartment = {
+        name: formData.get('name'),
+        location: formData.get('location'),
+        manager: formData.get('manager'),
+        budget: formData.get('budget') ? parseInt(formData.get('budget')) : 0
+    };
+    
+    try {
+        await apiRequest(`/departments/${currentEditingDepartmentId}`, {
+            method: 'PUT',
+            body: updatedDepartment
+        });
+        
+        bootstrap.Modal.getInstance(document.getElementById('editDepartmentModal')).hide();
+        loadDepartments();
+        showToast('Отдел успешно обновлен!', 'success');
+        currentEditingDepartmentId = null;
+    } catch (error) {
+        showAlert('editDepartmentModalAlert', error.message, 'danger');
+    }
 }
 
-function showAddDepartmentModal() {
-    showToast('Модальное окно добавления отдела в разработке', 'info');
+async function addDepartment() {
+    const form = document.getElementById('addDepartmentForm');
+    const formData = new FormData(form);
+    
+    const department = {
+        name: formData.get('name'),
+        location: formData.get('location'),
+        manager: formData.get('manager'),
+        budget: formData.get('budget') ? parseInt(formData.get('budget')) : 0,
+        employeeCount: 0
+    };
+    
+    try {
+        await apiRequest('/departments', {
+            method: 'POST',
+            body: department
+        });
+        
+        bootstrap.Modal.getInstance(document.getElementById('addDepartmentModal')).hide();
+        form.reset();
+        loadDepartments();
+        showToast('Отдел успешно добавлен!', 'success');
+    } catch (error) {
+        showAlert('departmentModalAlert', error.message, 'danger');
+    }
+}
+
+async function deleteDepartment(id) {
+    if (!confirm('Вы уверены, что хотите удалить этот отдел?')) {
+        return;
+    }
+    
+    try {
+        await apiRequest(`/departments/${id}`, {
+            method: 'DELETE'
+        });
+        
+        loadDepartments();
+        showToast('Отдел успешно удален!', 'success');
+    } catch (error) {
+        if (error.message.includes('работает') || error.message.includes('проект')) {
+            showAlert('departmentsAlert', error.message, 'warning');
+        } else {
+            showAlert('departmentsAlert', error.message, 'danger');
+        }
+    }
+}
+
+// ФУНКЦИИ ПОКАЗА МОДАЛЬНЫХ ОКОН
+async function showAddProjectModal() {
+    // Загрузка отделов для селекта
+    await loadDepartmentsForModal('addProjectForm');
+    
+    const modal = new bootstrap.Modal(document.getElementById('addProjectModal'));
+    modal.show();
+}
+
+async function showAddDepartmentModal() {
+    const modal = new bootstrap.Modal(document.getElementById('addDepartmentModal'));
+    modal.show();
+}
+
+// ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
+async function loadDepartmentsForModal(formId) {
+    try {
+        const departments = await apiRequest('/departments');
+        const select = document.querySelector(`#${formId} select[name="department"]`);
+        
+        select.innerHTML = '<option value="">Выберите отдел</option>';
+        departments.forEach(dept => {
+            select.innerHTML += `<option value="${dept.name}">${dept.name}</option>`;
+        });
+    } catch (error) {
+        console.error('Error loading departments for modal:', error);
+    }
+}
+
+async function loadDepartmentsForEditModal(selectId) {
+    try {
+        const departments = await apiRequest('/departments');
+        const select = document.getElementById(selectId);
+        
+        select.innerHTML = '<option value="">Выберите отдел</option>';
+        departments.forEach(dept => {
+            select.innerHTML += `<option value="${dept.name}">${dept.name}</option>`;
+        });
+    } catch (error) {
+        console.error('Error loading departments for edit modal:', error);
+    }
 } 

@@ -116,6 +116,31 @@ app.put('/api/employees/:id', authenticateToken, checkPermission('write'), async
 app.delete('/api/employees/:id', authenticateToken, checkPermission('admin'), async (req, res) => {
   try {
     const { ObjectId } = require('mongodb');
+    
+    // Получаем информацию о сотруднике перед удалением
+    const employeeToDelete = await db.collection('employees').findOne({ _id: new ObjectId(req.params.id) });
+    
+    if (!employeeToDelete) {
+      return res.status(404).json({ error: 'Сотрудник не найден' });
+    }
+    
+    // Проверяем, участвует ли сотрудник в активных проектах
+    const activeProjects = await db.collection('projects').find({
+      $or: [
+        { manager: employeeToDelete.name },
+        { team: { $in: [employeeToDelete.name] } }
+      ],
+      status: { $in: ['Планируется', 'В работе'] }
+    }).toArray();
+    
+    if (activeProjects.length > 0) {
+      return res.status(400).json({ 
+        error: `Нельзя удалить сотрудника "${employeeToDelete.name}". Он участвует в ${activeProjects.length} активных проект(ах): ${activeProjects.map(p => p.name).join(', ')}.`,
+        activeProjectsCount: activeProjects.length,
+        activeProjects: activeProjects.map(p => p.name)
+      });
+    }
+    
     const result = await db.collection('employees').deleteOne({ _id: new ObjectId(req.params.id) });
     res.json({ message: 'Сотрудник удален', deletedCount: result.deletedCount });
   } catch (error) {
@@ -158,6 +183,22 @@ app.put('/api/projects/:id', authenticateToken, checkPermission('write'), async 
 app.delete('/api/projects/:id', authenticateToken, checkPermission('admin'), async (req, res) => {
   try {
     const { ObjectId } = require('mongodb');
+    
+    // Получаем информацию о проекте перед удалением
+    const projectToDelete = await db.collection('projects').findOne({ _id: new ObjectId(req.params.id) });
+    
+    if (!projectToDelete) {
+      return res.status(404).json({ error: 'Проект не найден' });
+    }
+    
+    // Проверяем, является ли проект активным (нельзя удалять активные проекты)
+    if (projectToDelete.status === 'В работе' || projectToDelete.status === 'Планируется') {
+      return res.status(400).json({ 
+        error: `Нельзя удалить проект "${projectToDelete.name}" со статусом "${projectToDelete.status}". Завершите или отмените проект перед удалением.`,
+        currentStatus: projectToDelete.status
+      });
+    }
+    
     const result = await db.collection('projects').deleteOne({ _id: new ObjectId(req.params.id) });
     res.json({ message: 'Проект удален', deletedCount: result.deletedCount });
   } catch (error) {
@@ -200,6 +241,38 @@ app.put('/api/departments/:id', authenticateToken, checkPermission('write'), asy
 app.delete('/api/departments/:id', authenticateToken, checkPermission('admin'), async (req, res) => {
   try {
     const { ObjectId } = require('mongodb');
+    
+    // Получаем информацию об отделе перед удалением
+    const departmentToDelete = await db.collection('departments').findOne({ _id: new ObjectId(req.params.id) });
+    
+    if (!departmentToDelete) {
+      return res.status(404).json({ error: 'Отдел не найден' });
+    }
+    
+    // Проверяем, есть ли сотрудники в этом отделе
+    const employeesInDept = await db.collection('employees').countDocuments({ 
+      department: departmentToDelete.name 
+    });
+    
+    if (employeesInDept > 0) {
+      return res.status(400).json({ 
+        error: `Нельзя удалить отдел "${departmentToDelete.name}". В нем работает ${employeesInDept} сотрудник(ов).`,
+        employeesCount: employeesInDept
+      });
+    }
+    
+    // Проверяем, есть ли проекты в этом отделе
+    const projectsInDept = await db.collection('projects').countDocuments({ 
+      department: departmentToDelete.name 
+    });
+    
+    if (projectsInDept > 0) {
+      return res.status(400).json({ 
+        error: `Нельзя удалить отдел "${departmentToDelete.name}". В нем ${projectsInDept} активных проект(ов).`,
+        projectsCount: projectsInDept
+      });
+    }
+    
     const result = await db.collection('departments').deleteOne({ _id: new ObjectId(req.params.id) });
     res.json({ message: 'Отдел удален', deletedCount: result.deletedCount });
   } catch (error) {

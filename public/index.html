@@ -362,6 +362,9 @@
                     </div>
                 </div>
                 
+                <!-- Alert Container -->
+                <div id="employeesAlert"></div>
+                
                 <!-- Search and Filter -->
                 <div class="card mb-4">
                     <div class="card-body">
@@ -427,6 +430,9 @@
                     </div>
                 </div>
                 
+                <!-- Alert Container -->
+                <div id="projectsAlert"></div>
+                
                 <!-- Projects Cards -->
                 <div class="loading" id="projectsLoading">
                     <i class="fas fa-spinner fa-spin fa-2x"></i>
@@ -449,6 +455,9 @@
                         </button>
                     </div>
                 </div>
+                
+                <!-- Alert Container -->
+                <div id="departmentsAlert"></div>
                 
                 <!-- Departments Grid -->
                 <div class="loading" id="departmentsLoading">
@@ -516,6 +525,7 @@
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
+                    <div id="employeeModalAlert"></div>
                     <form id="addEmployeeForm">
                         <div class="row">
                             <div class="col-md-6 mb-3">
@@ -558,6 +568,283 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
                     <button type="button" class="btn btn-primary" onclick="addEmployee()">Добавить</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Employee Modal -->
+    <div class="modal fade" id="editEmployeeModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-user-edit me-2"></i>Редактировать сотрудника</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="editEmployeeModalAlert"></div>
+                    <form id="editEmployeeForm">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Имя</label>
+                                <input type="text" class="form-control" id="editEmployeeName" name="name" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Должность</label>
+                                <input type="text" class="form-control" id="editEmployeePosition" name="position" required>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Отдел</label>
+                                <select class="form-select" id="editEmployeeDepartment" name="department" required>
+                                    <option value="">Выберите отдел</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Зарплата</label>
+                                <input type="number" class="form-control" id="editEmployeeSalary" name="salary" required>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Email</label>
+                                <input type="email" class="form-control" id="editEmployeeEmail" name="email" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Телефон</label>
+                                <input type="tel" class="form-control" id="editEmployeePhone" name="phone">
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Навыки (через запятую)</label>
+                            <input type="text" class="form-control" id="editEmployeeSkills" name="skills" placeholder="JavaScript, Node.js, MongoDB">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="button" class="btn btn-primary" onclick="updateEmployee()">Сохранить</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Project Modal -->
+    <div class="modal fade" id="addProjectModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-project-diagram me-2"></i>Добавить проект</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="projectModalAlert"></div>
+                    <form id="addProjectForm">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Название проекта</label>
+                                <input type="text" class="form-control" name="name" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Статус</label>
+                                <select class="form-select" name="status" required>
+                                    <option value="">Выберите статус</option>
+                                    <option value="Планируется">Планируется</option>
+                                    <option value="В работе">В работе</option>
+                                    <option value="Завершен">Завершен</option>
+                                    <option value="Отменен">Отменен</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Описание</label>
+                            <textarea class="form-control" name="description" rows="3" required></textarea>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Бюджет (₽)</label>
+                                <input type="number" class="form-control" name="budget" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Отдел</label>
+                                <select class="form-select" name="department" required>
+                                    <option value="">Выберите отдел</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Менеджер проекта</label>
+                                <input type="text" class="form-control" name="manager">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Команда проекта (через запятую)</label>
+                                <input type="text" class="form-control" name="team" placeholder="Иванов И.И., Петров П.П., Сидорова М.А.">
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Дата начала</label>
+                                <input type="date" class="form-control" name="startDate" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Дата окончания</label>
+                                <input type="date" class="form-control" name="endDate">
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="button" class="btn btn-primary" onclick="addProject()">Добавить</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Project Modal -->
+    <div class="modal fade" id="editProjectModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-project-diagram me-2"></i>Редактировать проект</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="editProjectModalAlert"></div>
+                    <form id="editProjectForm">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Название проекта</label>
+                                <input type="text" class="form-control" id="editProjectName" name="name" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Статус</label>
+                                <select class="form-select" id="editProjectStatus" name="status" required>
+                                    <option value="">Выберите статус</option>
+                                    <option value="Планируется">Планируется</option>
+                                    <option value="В работе">В работе</option>
+                                    <option value="Завершен">Завершен</option>
+                                    <option value="Отменен">Отменен</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Описание</label>
+                            <textarea class="form-control" id="editProjectDescription" name="description" rows="3" required></textarea>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Бюджет (₽)</label>
+                                <input type="number" class="form-control" id="editProjectBudget" name="budget" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Отдел</label>
+                                <select class="form-select" id="editProjectDepartment" name="department" required>
+                                    <option value="">Выберите отдел</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Менеджер проекта</label>
+                                <input type="text" class="form-control" id="editProjectManager" name="manager">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Команда проекта (через запятую)</label>
+                                <input type="text" class="form-control" id="editProjectTeam" name="team" placeholder="Иванов И.И., Петров П.П., Сидорова М.А.">
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Дата начала</label>
+                                <input type="date" class="form-control" id="editProjectStartDate" name="startDate" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Дата окончания</label>
+                                <input type="date" class="form-control" id="editProjectEndDate" name="endDate">
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="button" class="btn btn-primary" onclick="updateProject()">Сохранить</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Department Modal -->
+    <div class="modal fade" id="addDepartmentModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-building me-2"></i>Добавить отдел</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="departmentModalAlert"></div>
+                    <form id="addDepartmentForm">
+                        <div class="mb-3">
+                            <label class="form-label">Название отдела</label>
+                            <input type="text" class="form-control" name="name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Расположение</label>
+                            <input type="text" class="form-control" name="location" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Менеджер отдела</label>
+                            <input type="text" class="form-control" name="manager">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Бюджет (₽)</label>
+                            <input type="number" class="form-control" name="budget">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="button" class="btn btn-primary" onclick="addDepartment()">Добавить</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Department Modal -->
+    <div class="modal fade" id="editDepartmentModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-building me-2"></i>Редактировать отдел</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="editDepartmentModalAlert"></div>
+                    <form id="editDepartmentForm">
+                        <div class="mb-3">
+                            <label class="form-label">Название отдела</label>
+                            <input type="text" class="form-control" id="editDepartmentName" name="name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Расположение</label>
+                            <input type="text" class="form-control" id="editDepartmentLocation" name="location" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Менеджер отдела</label>
+                            <input type="text" class="form-control" id="editDepartmentManager" name="manager">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Бюджет (₽)</label>
+                            <input type="number" class="form-control" id="editDepartmentBudget" name="budget">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="button" class="btn btn-primary" onclick="updateDepartment()">Сохранить</button>
                 </div>
             </div>
         </div>
